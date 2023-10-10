@@ -40,23 +40,24 @@ router.post("/", async (req, res, next) => {
     next(e);
   }
 });
-let paid_date;
+
 router.put("/:id", async (req, res, next) => {
   // Update an invoice amount
   try {
     const { amt, paid } = req.body;
 
     const { id } = req.params;
-
+    let paid_date;
     const invoiceResult = await db.query(
       `SELECT paid, paid_date, amt FROM invoices WHERE id = $1`,
       [id]
     );
-    console.log(invoiceResult.rows[0].paid);
-    if (invoiceResult.rows[0].paid === false && paid === "true") {
+    let currPaidState = await invoiceResult.rows[0].paid
+    
+    if ( currPaidState === false && paid === "true") {
       paid_date = "2023-10-07T04:00:00.000Z";
     }
-    if (invoiceResult.rows[0].paid === true && paid === false) {
+    if (currPaidState === true && paid === "false") {
       paid_date = null;
     } else {
       paid_date = invoiceResult.rows[0].paid_date;
