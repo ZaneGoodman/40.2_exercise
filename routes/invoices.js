@@ -41,32 +41,38 @@ router.post("/", async (req, res, next) => {
   }
 });
 
+async function getCurrentInvoice(id, paid) {
+  let paid_date;
+
+  const invoiceResult = await db.query(
+    `SELECT paid, paid_date, amt FROM invoices WHERE id = $1`,
+    [id]
+  );
+
+  let currPaidState = await invoiceResult.rows[0].paid;
+
+  if (currPaidState === false && paid === "true") {
+    paid_date = "2023-10-07T04:00:00.000Z";
+  }
+  if (currPaidState === true && paid === "false") {
+    paid_date = null;
+  }
+
+  return { paid_date };
+}
+
 router.put("/:id", async (req, res, next) => {
   // Update an invoice amount
   try {
     const { amt, paid } = req.body;
-
     const { id } = req.params;
-    let paid_date;
-    const invoiceResult = await db.query(
-      `SELECT paid, paid_date, amt FROM invoices WHERE id = $1`,
-      [id]
-    );
-    let currPaidState = await invoiceResult.rows[0].paid
-    
-    if ( currPaidState === false && paid === "true") {
-      paid_date = "2023-10-07T04:00:00.000Z";
-    }
-    if (currPaidState === true && paid === "false") {
-      paid_date = null;
-    } else {
-      paid_date = invoiceResult.rows[0].paid_date;
-    }
-    console.log(paid_date);
+    const { paid_date } = await getCurrentInvoice(id, paid);
+
     const result = await db.query(
       `UPDATE invoices SET amt = $1, paid_date = $2, paid = $3 WHERE id = $4 RETURNING *`,
       [amt, paid_date, paid, id]
     );
+
     if (result.rows.length === 0) {
       throw new ExpressError(`Can not find invoice with id of: ${id}`, 404);
     }
